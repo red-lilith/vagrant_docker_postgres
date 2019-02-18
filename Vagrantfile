@@ -9,7 +9,7 @@ Vagrant.configure("2") do |config|
   end
   config.vm.provision "docker", images: ["postgres"]
   config.vm.provision "shell", path: "script.sh"
-  config.vm.network "forwarded_port", guest: 80, host: 8000
+  config.vm.network "forwarded_port", guest: 5432, host: 5432
   config.vm.synced_folder "./data", "/data"
 end
 
