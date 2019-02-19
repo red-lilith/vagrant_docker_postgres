@@ -7,9 +7,10 @@ Vagrant.configure("2") do |config|
   config.vm.provider :virtualbox do |vb|
          vb.customize [ 'modifyvm', :id, '--name', 'Dockervm']
   end
+ # config.ssh.password = 'vagrant'
   config.vm.provision "docker", images: ["postgres"]
+  config.vm.network "forwarded_port", guest: 7001, host: 7001
   config.vm.provision "shell", path: "script.sh"
-  config.vm.network "forwarded_port", guest: 80, host: 8000
-  config.vm.synced_folder "./data", "/data"
+  config.vm.synced_folder "./data/", "/data"
 end
 
