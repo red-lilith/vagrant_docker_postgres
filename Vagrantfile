@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
  # config.ssh.password = 'vagrant'
   config.vm.provision "docker", images: ["postgres"]
   config.vm.network "forwarded_port", guest: 7001, host: 7001
+  config.vm.synced_folder "./data/", "/home/vagrant/data/"
   config.vm.provision "shell", path: "script.sh"
-  config.vm.synced_folder "./data/", "/data"
 end
 
