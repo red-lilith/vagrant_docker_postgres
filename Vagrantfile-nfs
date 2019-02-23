@@ -1,0 +1,38 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$script = <<-SCRIPT
+echo "192.168.133.3    	server" >> /etc/hosts
+echo "192.168.133.4    	client" >> /etc/hosts
+SCRIPT
+
+$sserver = <<-SCRIPT
+sudo apt-get update
+sudo apt-get -y install nfs-kernel-server
+sudo echo "/mnt 192.168.133.4(rw,sync,no_subtree_check)" >> /etc/exports
+sudo chown nobody:nogroup /mnt
+sudo /etc/init.d/nfs-kernel-server restart
+sudo ufw allow from 192.168.133.4 to any port nfs
+SCRIPT
+
+$sclient = <<-SCRIPT
+sudo apt-get update
+sudo apt-get install nfs-common
+sudo mkdir -p /nfs/general
+sudo mount 192.168.133.3/var/nfs/general /nfs/general
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.define "server" do |m|
+	m.vm.box = "ubuntu/bionic64"
+	m.vm.network "private_network", ip: "192.168.133.3"
+	m.vm.provision "shell", inline: $sserver
+  end
+  config.vm.define "client" do |m|
+	m.vm.box = "ubuntu/bionic64"
+	m.vm.network "private_network", ip: "192.168.133.4"
+  end
+  config.vm.provision "shell", inline: $script
+  config.vbguest.iso_path = "./VBoxGuestAdditions_5.2.14.iso"
+end
+
