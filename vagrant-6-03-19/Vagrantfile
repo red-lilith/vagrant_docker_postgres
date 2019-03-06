@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$script = <<-SCRIPT
+echo "192.168.133.3    	server" >> /etc/hosts
+echo "192.168.133.4    	client" >> /etc/hosts
+SCRIPT
+
+$sserver = <<-SCRIPT
+sudo apt-get update
+sudo apt-get -y install nfs-kernel-server
+sudo mkdir -p /export/shared
+sudo mkdir /shared
+sudo chmod 777 /{export,shared} && sudo chmod 777 /export/*
+sudo mount --bind /shared /export/shared
+sudo echo "/export/shared *(rw,fsid=0,insecure,no_subtree_check,async)" >> /etc/exports
+sudo chown nobody:nogroup /export/shared
+sudo /etc/init.d/nfs-kernel-server restart
+sudo ufw allow from 192.168.133.4 to any port nfs
+SCRIPT
+
+$sclient = <<-SCRIPT
+sudo apt-get update
+sudo apt-get install nfs-common
+sudo mkdir /shared
+sudo chmod 777 /shared
+sudo echo "192.168.133.3:/export/shared  /shared  nfs  auto  0  0" >> /etc/fstab
+sudo mount -a
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.define "master" do |m|
+	m.vm.box = "ubuntu/xenial64"
+	m.vm.hostname = "master.localhost"
+	m.vm.provider :virtualbox do |vb|
+		vb.customize [ 'modifyvm', :id, '--memory', '1500' ]
+		vb.customize [ 'modifyvm', :id, '--cpus', '1' ]
+		vb.customize [ 'modifyvm', :id, '--name', 'cluster-master' ]
+                vb.customize [ "modifyvm", :id, "--nic2", "hostonly" ]
+                vb.customize [ "modifyvm", :id, "--hostonlyadapter2", "vboxnet4" ]
+  	end
+	m.vm.network "private_network", ip: "192.168.133.3"
+	m.vm.provision "shell", inline: $sserver
+	config.vm.provision "shell", path: "nmscript.sh"
+  end
+  (1..2).each do |i|
+    config.vm.define "node#{i}" do |m|
+	m.vm.box = "ubuntu/xenial64"
+	m.vm.hostname = "node-0#{i}.localhost"
+  	m.vm.provider :virtualbox do |vb|
+		vb.customize [ 'modifyvm', :id, '--memory', '750' ]
+		vb.customize [ 'modifyvm', :id, '--cpus', '1' ]
+		vb.customize [ 'modifyvm', :id, '--name', "cluster-node-#{i}" ]
+                vb.customize [ "modifyvm", :id, "--nic2", "hostonly" ]
+                vb.customize [ "modifyvm", :id, "--hostonlyadapter2", "vboxnet4" ]
+  	end
+	m.vm.network "private_network", ip: "192.168.133.4"
+	m.vm.provision "shell", inline: $sclient
+	config.vm.provision "shell", path: "nnscript.sh"
+  end
+  config.vm.provision "shell", inline: $script
+  config.vbguest.iso_path = "./VBoxGuestAdditions_5.2.14.iso"
+end
+
